@@ -23,15 +23,21 @@ export function trigger(target, key) {
   const dep = depMap.get(key)
   if(dep) {
     dep.forEach(effect => {
-      effect.run()
+      if(effect._options && effect._options.scheduler) {
+        effect._options.scheduler(effect)
+      } else {
+        effect.run()
+      }
     })
   }
 }
 
 class ReactiveEffect {
   private _fn: Function
-  constructor(fn: Function) {
+  private _options: any
+  constructor(fn: Function, options?: any) {
     this._fn = fn
+    this._options = options
   }
   run() {
     activeEffect = this
@@ -39,7 +45,11 @@ class ReactiveEffect {
     activeEffect = null
   }
 }
-export function effect(fn: Function) {
-  const _effect = new ReactiveEffect(fn)
-  _effect.run()
+export function effect(fn: Function, options?: any) {
+  const _effect = new ReactiveEffect(fn, options)
+  if( !options || !options.lazy ) {
+    _effect.run()
+  }
+  return _effect.run.bind(_effect)
+  
 }
