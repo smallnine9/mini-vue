@@ -3,6 +3,7 @@ import { extend } from "../../shared"
 let activeEffect: any
 
 const targetMap = new WeakMap()
+
 export function track(target: any, key: String | Symbol) {
   let depsMap = targetMap.get(target)
   if(!depsMap) {
@@ -58,6 +59,7 @@ class ReactiveEffect {
     })
   }
 }
+
 export function effect(fn: Function, options?: any) {
   const _effect = new ReactiveEffect(fn, options)
   extend(_effect, options)
