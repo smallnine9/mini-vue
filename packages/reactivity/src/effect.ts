@@ -1,3 +1,5 @@
+import { extend } from "../../shared"
+
 let activeEffect: any
 
 const targetMap = new WeakMap()
@@ -12,6 +14,7 @@ export function track(target: any, key: String | Symbol) {
   }
   if(activeEffect) {
     dep.add(activeEffect)
+    activeEffect.deps.push(dep)
   }
 }
 
@@ -35,6 +38,8 @@ export function trigger(target, key) {
 class ReactiveEffect {
   private _fn: Function
   private _options: any
+  public deps: any[] = []
+  private onStop ?: () => {}
   constructor(fn: Function, options?: any) {
     this._fn = fn
     this._options = options
@@ -44,12 +49,27 @@ class ReactiveEffect {
     this._fn()
     activeEffect = null
   }
+  stop() {
+    if(this.onStop) {
+      this.onStop()
+    }
+    this.deps.forEach(dep => {
+      dep.delete(this)
+    })
+  }
 }
 export function effect(fn: Function, options?: any) {
   const _effect = new ReactiveEffect(fn, options)
+  extend(_effect, options)
   if( !options || !options.lazy ) {
     _effect.run()
   }
-  return _effect.run.bind(_effect)
+  const runner = _effect.run.bind(_effect)
+  runner.effect = _effect
+  return runner
   
+}
+
+export function stop(runner) {
+  runner.effect.stop()
 }
