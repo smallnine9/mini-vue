@@ -1,9 +1,11 @@
 import { track, trigger } from './effect'
 
-function createGetters() {
+function createGetters(isReadonly = false) {
   return function get(target, key, receiver) {
     const res = Reflect.get(target, key, receiver)
-    track(target, key)
+    if(!isReadonly) {
+      track(target, key)
+    }
     return res
   }
 }
@@ -16,8 +18,9 @@ function createSetters() {
   }
 }
 
-const get = createGetters()
+const get = createGetters(false)
 const set = createSetters()
+const readonlyGet = createGetters(true)
 
 export const mutableHandlers = {
   get,
@@ -25,7 +28,7 @@ export const mutableHandlers = {
 }
 
 export const readonlyHandlers = {
-  get,
+  get:readonlyGet,
   set(target, key) {
     console.warn(`Set operation on key "${String(key)}" failed: target is readonly.`, target)
     return true
