@@ -25,4 +25,19 @@ describe('readonly', () => {
     expect(isReadonly(objReadonly)).toBe(true)
     expect(isReadonly(obj)).toBe(false)
   })
+
+  it('nested readonly', () => {
+    const obj = {
+      foo: 1,
+      bar: {
+        baz: 2
+      }
+    }
+    const objReadonly = readonly(obj)
+    console.warn = jest.fn()
+    objReadonly.bar.baz = 3
+    expect(console.warn).toHaveBeenCalled()
+    expect(isReadonly(objReadonly.bar)).toBe(true)
+    expect(isReadonly(obj.bar)).toBe(false)
+  })
 })
