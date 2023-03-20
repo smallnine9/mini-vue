@@ -1,4 +1,4 @@
-import { readonly, isReadonly } from '../src/reactive'
+import { readonly, isReadonly, shallowReadonly } from '../src/reactive'
 import * as Effect from '../src/effect'
 jest.mock('../src/effect')
 describe('readonly', () => {
@@ -38,6 +38,21 @@ describe('readonly', () => {
     objReadonly.bar.baz = 3
     expect(console.warn).toHaveBeenCalled()
     expect(isReadonly(objReadonly.bar)).toBe(true)
+    expect(isReadonly(obj.bar)).toBe(false)
+  })
+
+  it('shallowReadonly', () => {
+    const obj = {
+      foo: 1,
+      bar: {
+        baz: 2
+      }
+    }
+    const objReadonly = shallowReadonly(obj)
+    console.warn = jest.fn()
+    objReadonly.bar.baz = 3
+    expect(console.warn).not.toHaveBeenCalled()
+    expect(isReadonly(objReadonly.bar)).toBe(false)
     expect(isReadonly(obj.bar)).toBe(false)
   })
 })

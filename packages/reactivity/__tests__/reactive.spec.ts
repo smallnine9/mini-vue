@@ -1,5 +1,5 @@
 import { effect } from '../src/effect'
-import { reactive, isReactive } from '../src/reactive'
+import { reactive, isReactive, shallowReactive } from '../src/reactive'
 
 describe('reactive', () => {
   it('happy path', () => {
@@ -28,6 +28,23 @@ describe('reactive', () => {
     })
     expect(isReactive(objObserve.bar)).toBe(true)
     expect(isReactive(obj.bar)).toBe(false)
+    expect(dummy).toBe(2)
+  })
+  it('shallowReactive', () => {
+    const obj = {
+      foo: 1,
+      bar: {
+        baz: 2
+      }
+    }
+    const objObserve = shallowReactive(obj)
+    let dummy = 0
+    effect(() => {
+      dummy = objObserve.bar.baz
+    })
+    expect(isReactive(objObserve.bar)).toBe(false)
+    expect(isReactive(obj.bar)).toBe(false)
+    objObserve.bar.baz = 3
     expect(dummy).toBe(2)
   })
 })
