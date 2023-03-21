@@ -43,19 +43,18 @@ export function triggerEffects(dep) {
     }
   })
 }
-class ReactiveEffect {
-  private _fn: Function
+export class ReactiveEffect {
   private _options: any
   public deps: any[] = []
   private onStop ?: () => {}
-  constructor(fn: Function, options?: any) {
-    this._fn = fn
+  constructor(public fn, options?: any) {
     this._options = options
   }
   run() {
     activeEffect = this
-    this._fn()
+    const res = this.fn()
     activeEffect = null
+    return res
   }
   stop() {
     if(this.onStop) {
