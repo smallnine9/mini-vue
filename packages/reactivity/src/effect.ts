@@ -1,3 +1,4 @@
+import { isExportDeclaration } from "typescript"
 import { extend } from "../../shared"
 
 let activeEffect: any
@@ -13,6 +14,10 @@ export function track(target: any, key: String | Symbol) {
   if(!dep) {
     depsMap.set(key, dep = new Set())
   }
+  trackEffects(dep) 
+}
+
+export function trackEffects(dep) {
   if(activeEffect) {
     dep.add(activeEffect)
     activeEffect.deps.push(dep)
@@ -26,16 +31,18 @@ export function trigger(target, key) {
   }
   const dep = depMap.get(key)
   if(dep) {
-    dep.forEach(effect => {
-      if(effect._options && effect._options.scheduler) {
-        effect._options.scheduler(effect)
-      } else {
-        effect.run()
-      }
-    })
+    triggerEffects(dep)
   }
 }
-
+export function triggerEffects(dep) {
+  dep.forEach(effect => {
+    if(effect._options && effect._options.scheduler) {
+      effect._options.scheduler(effect)
+    } else {
+      effect.run()
+    }
+  })
+}
 class ReactiveEffect {
   private _fn: Function
   private _options: any
