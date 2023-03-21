@@ -1,5 +1,5 @@
 import { trackEffects, triggerEffects } from './effect'
-import {reactive} from './reactive'
+import { reactive } from './reactive'
 import { hasChanged } from '../../shared/index'
 class RefImpl {
   private _value
@@ -35,4 +35,21 @@ export function isRef(target) {
 
 export function unRef(target) {
   return isRef(target) ? target.value : target
+}
+
+const shallowUnWrapHandlers = {
+  get(target, key) {
+    return unRef(Reflect.get(target, key))
+  },
+  set(target, key, value) {
+    const oldValue = target[key]
+    if(isRef(oldValue) && !isRef(value)) {
+      oldValue.value = value
+      return true
+    }
+    return Reflect.set(target, key, value)
+  }
+}
+export function proxyRefs(target) {
+  return new Proxy(target, shallowUnWrapHandlers)
 }

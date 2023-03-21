@@ -1,4 +1,4 @@
-import { ref, isRef, unRef } from '../src/ref'
+import { ref, isRef, unRef, proxyRefs } from '../src/ref'
 import { effect } from '../src/effect'
 
 describe('ref', () => {
@@ -53,4 +53,25 @@ describe('isRef', () => {
     expect(unRef(a)).toBe(1)
     expect(unRef(1)).toBe(1)
   })
+})
+
+describe('proxyRefs', () => {
+  it("proxyRefs", () => {
+    const user = {
+      age: ref(10),
+      name: "xiaohong",
+    };
+    const proxyUser = proxyRefs(user);
+    expect(user.age.value).toBe(10);
+    expect(proxyUser.age).toBe(10);
+    expect(proxyUser.name).toBe("xiaohong");
+
+    (proxyUser as any).age = 20;
+    expect(proxyUser.age).toBe(20);
+    expect(user.age.value).toBe(20);
+
+    proxyUser.age = ref(10);
+    expect(proxyUser.age).toBe(10);
+    expect(user.age.value).toBe(10);
+  });
 })
