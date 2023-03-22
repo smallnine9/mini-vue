@@ -1,0 +1,1 @@
+export { createVNode as h } from './vnode'
