@@ -3,7 +3,10 @@ const App = {
   name: 'HelloWorld',
   setup() {},
   render() {
-    return h('div', {}, 'Hello World')
+    return h('div', { id: 'root' }, 
+    [h('div', {class: 'red'}, "I'm red"),
+     h('div', { class: 'green'}, "I'm green")
+    ])
   }
 }
 export default App

@@ -279,23 +279,50 @@ function finishComponentSetup(instance) {
 }
 
 function patch(vnode, container) {
-    if (typeof vnode.type === 'string') ;
+    if (typeof vnode.type === 'string') {
+        // 普通的元素
+        processElement(vnode, container);
+    }
     else if (isObject(vnode.type)) {
         // 组件
-        processComponent(vnode);
+        processComponent(vnode, container);
     }
 }
 function processComponent(vnode, container) {
-    mountComponent(vnode);
+    mountComponent(vnode, container);
 }
 function mountComponent(vnode, container) {
     var instance = createComponentInstance(vnode);
     console.log(instance);
     setupComponent(instance);
-    setupRenderEffect(instance);
+    setupRenderEffect(instance, container);
 }
-function setupRenderEffect(instance) {
-    instance.render();
+function setupRenderEffect(instance, container) {
+    var subTree = instance.render();
+    patch(subTree, container);
+}
+function processElement(vnode, container) {
+    var el = (vnode.el = document.createElement(vnode.type));
+    if (vnode.props) {
+        patchProps(el, vnode.props);
+    }
+    if (Array.isArray(vnode.children)) {
+        mountChildren(vnode.children, el);
+    }
+    else if (typeof vnode.children === 'string') {
+        el.textContent = vnode.children;
+    }
+    container.appendChild(el);
+}
+function mountChildren(children, container) {
+    children.forEach(function (child) {
+        patch(child, container);
+    });
+}
+function patchProps(el, props) {
+    for (var key in props) {
+        el.setAttribute(key, props[key]);
+    }
 }
 
 function createApp(rootComponent) {
@@ -303,7 +330,7 @@ function createApp(rootComponent) {
     return {
         mount: function (rootContainer) {
             var vnode = createVNode(rootComponent);
-            patch(vnode);
+            patch(vnode, rootContainer);
         }
     };
 }
