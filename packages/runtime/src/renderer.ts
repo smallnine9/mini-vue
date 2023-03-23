@@ -18,19 +18,19 @@ function mountComponent(vnode, container) {
   const instance = createComponentInstance(vnode)
   console.log(instance)
   setupComponent(instance)
-  setupRenderEffect(instance, container)
+  setupRenderEffect(instance, vnode, container)
 }
 
-function setupRenderEffect(instance, container) {
-  const subTree = instance.render()
+function setupRenderEffect(instance, vnode, container) {
+  const subTree = instance.render.call(instance.proxy)
   patch(subTree, container)
+  vnode.el = subTree.el
 }
 
 function processElement(vnode, container) {
   const el = (vnode.el = document.createElement(vnode.type))
   if (vnode.props) {
     patchProps(el, vnode.props)
-
   }
   if (Array.isArray(vnode.children)) {
     mountChildren(vnode.children, el)

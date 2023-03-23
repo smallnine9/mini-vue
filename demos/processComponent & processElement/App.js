@@ -1,4 +1,4 @@
-import { h } from '../dist/mini-vue.esm.js'
+import { h } from '../../dist/mini-vue.esm.js'
 const App = {
   name: 'HelloWorld',
   setup() {},

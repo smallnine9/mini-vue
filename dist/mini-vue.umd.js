@@ -245,9 +245,26 @@
         return {
             type: type,
             props: props,
-            children: children
+            children: children,
+            el: null
         };
     }
+
+    var publicPropertiesMap = {
+        $el: function (i) { return i.vnode.el; }
+    };
+    var PublicInstanceProxyHandlers = {
+        get: function (_a, key) {
+            var instance = _a._;
+            var setupState = instance.setupState;
+            if (key in setupState) {
+                return Reflect.get(setupState, key);
+            }
+            if (key in publicPropertiesMap) {
+                return publicPropertiesMap[key](instance);
+            }
+        }
+    };
 
     function createComponentInstance(vnode) {
         var instance = {
@@ -264,6 +281,7 @@
     }
     function setupStatefulComponent(instance) {
         var component = instance.type;
+        instance.proxy = new Proxy({ _: instance }, PublicInstanceProxyHandlers);
         var setup = component.setup;
         if (setup) {
             var setupResult = setup();
@@ -301,11 +319,12 @@
         var instance = createComponentInstance(vnode);
         console.log(instance);
         setupComponent(instance);
-        setupRenderEffect(instance, container);
+        setupRenderEffect(instance, vnode, container);
     }
-    function setupRenderEffect(instance, container) {
-        var subTree = instance.render();
+    function setupRenderEffect(instance, vnode, container) {
+        var subTree = instance.render.call(instance.proxy);
         patch(subTree, container);
+        vnode.el = subTree.el;
     }
     function processElement(vnode, container) {
         var el = (vnode.el = document.createElement(vnode.type));
