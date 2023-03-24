@@ -365,7 +365,14 @@
     }
     function patchProps(el, props) {
         for (var key in props) {
-            el.setAttribute(key, props[key]);
+            var isOn = /^on[A-Z]/.test(key);
+            if (isOn) {
+                var func = props[key];
+                el.addEventListener(key.slice(2).toLocaleLowerCase(), func);
+            }
+            else {
+                el.setAttribute(key, props[key]);
+            }
         }
     }
 

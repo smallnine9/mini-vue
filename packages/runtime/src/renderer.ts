@@ -51,6 +51,12 @@ function mountChildren(children, container) {
 
 function patchProps(el: any, props: any) {
   for (let key in props) {
-    el.setAttribute(key, props[key])
+    const isOn = /^on[A-Z]/.test(key)
+    if(isOn) {
+      const func = props[key]
+      el.addEventListener(key.slice(2).toLocaleLowerCase(), func)
+    } else {
+      el.setAttribute(key, props[key])
+    }
   }
 }
