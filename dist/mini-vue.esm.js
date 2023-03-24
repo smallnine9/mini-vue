@@ -240,8 +240,25 @@ function createVNode(type, props, children) {
         type: type,
         props: props,
         children: children,
-        el: null
+        el: null,
+        shapeFlag: getShapeFlag(type, children)
     };
+}
+function getShapeFlag(type, children) {
+    var shapeFlag = 0;
+    if (typeof type === 'string') {
+        shapeFlag |= 1 /* shapeFlags.ELEMENT */;
+    }
+    if (isObject(type)) {
+        shapeFlag |= 4 /* shapeFlags.STATEFUL_COMPONENT */;
+    }
+    if (typeof children === 'string') {
+        shapeFlag |= 8 /* shapeFlags.TEXT_CHILDREN */;
+    }
+    if (Array.isArray(children)) {
+        shapeFlag |= 16 /* shapeFlags.ARRAY_CHILDREN */;
+    }
+    return shapeFlag;
 }
 
 var publicPropertiesMap = {
@@ -297,11 +314,12 @@ function finishComponentSetup(instance) {
 }
 
 function patch(vnode, container) {
-    if (typeof vnode.type === 'string') {
+    var shapeFlag = vnode.shapeFlag;
+    if (shapeFlag & 1 /* shapeFlags.ELEMENT */) {
         // 普通的元素
         processElement(vnode, container);
     }
-    else if (isObject(vnode.type)) {
+    else if (shapeFlag & 4 /* shapeFlags.STATEFUL_COMPONENT */) {
         // 组件
         processComponent(vnode, container);
     }
@@ -325,10 +343,11 @@ function processElement(vnode, container) {
     if (vnode.props) {
         patchProps(el, vnode.props);
     }
-    if (Array.isArray(vnode.children)) {
+    var shapeFlag = vnode.shapeFlag;
+    if (shapeFlag & 16 /* shapeFlags.ARRAY_CHILDREN */) {
         mountChildren(vnode.children, el);
     }
-    else if (typeof vnode.children === 'string') {
+    else if (shapeFlag & 8 /* shapeFlags.TEXT_CHILDREN */) {
         el.textContent = vnode.children;
     }
     container.appendChild(el);

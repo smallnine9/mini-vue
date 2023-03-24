@@ -1,11 +1,13 @@
 import { isObject } from "../../shared"
 import { createComponentInstance, setupComponent } from "./component"
+import { shapeFlags } from "../../shared/shapeFlags"
 
 export function patch(vnode, container) {
-  if (typeof vnode.type === 'string') {
+  const { shapeFlag } = vnode
+  if (shapeFlag & shapeFlags.ELEMENT) {
     // 普通的元素
     processElement(vnode, container)
-  } else if (isObject(vnode.type)) {
+  } else if (shapeFlag & shapeFlags.STATEFUL_COMPONENT) {
     // 组件
     processComponent(vnode, container)
   }
@@ -32,9 +34,10 @@ function processElement(vnode, container) {
   if (vnode.props) {
     patchProps(el, vnode.props)
   }
-  if (Array.isArray(vnode.children)) {
+  const { shapeFlag } = vnode
+  if (shapeFlag & shapeFlags.ARRAY_CHILDREN) {
     mountChildren(vnode.children, el)
-  } else if (typeof vnode.children === 'string') {
+  } else if (shapeFlag & shapeFlags.TEXT_CHILDREN) {
     el.textContent = vnode.children
   }
   container.appendChild(el)
