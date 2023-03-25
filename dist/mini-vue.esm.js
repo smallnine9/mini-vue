@@ -5,6 +5,7 @@ var isObject = function (res) {
 var hasChanged = function (value, oldValue) {
     return !Object.is(value, oldValue);
 };
+var hasKey = function (val, key) { return Object.prototype.hasOwnProperty.call(val, key); };
 
 var activeEffect;
 var targetMap = new WeakMap();
@@ -137,6 +138,9 @@ var shallowReadonlyHandlers = {
 };
 
 function createReactiveObject(target, baseHandlers) {
+    if (!isObject(target)) {
+        return target;
+    }
     var observed = new Proxy(target, baseHandlers);
     return observed;
 }
@@ -261,15 +265,22 @@ function getShapeFlag(type, children) {
     return shapeFlag;
 }
 
+function initProps(instance, rawProps) {
+    instance.props = rawProps || {};
+}
+
 var publicPropertiesMap = {
     $el: function (i) { return i.vnode.el; }
 };
 var PublicInstanceProxyHandlers = {
     get: function (_a, key) {
         var instance = _a._;
-        var setupState = instance.setupState;
-        if (key in setupState) {
+        var setupState = instance.setupState, props = instance.props;
+        if (hasKey(setupState, key)) {
             return Reflect.get(setupState, key);
+        }
+        else if (hasKey(props, key)) {
+            return Reflect.get(props, key);
         }
         if (key in publicPropertiesMap) {
             return publicPropertiesMap[key](instance);
@@ -282,11 +293,13 @@ function createComponentInstance(vnode) {
         type: vnode.type,
         props: {},
         subTree: null,
+        setupState: {},
         vnode: vnode
     };
     return instance;
 }
 function setupComponent(instance) {
+    initProps(instance, instance.vnode.props);
     // Todo 函数式组件没有state
     setupStatefulComponent(instance);
 }
@@ -295,7 +308,7 @@ function setupStatefulComponent(instance) {
     instance.proxy = new Proxy({ _: instance }, PublicInstanceProxyHandlers);
     var setup = component.setup;
     if (setup) {
-        var setupResult = setup();
+        var setupResult = setup(shallowReadonly(instance.props));
         handleSetupResult(instance, setupResult);
     }
 }
@@ -307,7 +320,6 @@ function handleSetupResult(instance, setupResult) {
 }
 function finishComponentSetup(instance) {
     var component = instance.type;
-    console.log(component);
     if (component.render) {
         instance.render = component.render;
     }
@@ -329,7 +341,6 @@ function processComponent(vnode, container) {
 }
 function mountComponent(vnode, container) {
     var instance = createComponentInstance(vnode);
-    console.log(instance);
     setupComponent(instance);
     setupRenderEffect(instance, vnode, container);
 }

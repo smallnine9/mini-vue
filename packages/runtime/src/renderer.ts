@@ -18,7 +18,6 @@ export function processComponent(vnode, container) {
 
 function mountComponent(vnode, container) {
   const instance = createComponentInstance(vnode)
-  console.log(instance)
   setupComponent(instance)
   setupRenderEffect(instance, vnode, container)
 }
