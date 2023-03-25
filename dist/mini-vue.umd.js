@@ -4,23 +4,33 @@
     (global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.MiniVue = {}));
 })(this, (function (exports) { 'use strict';
 
-    var extend = Object.assign;
-    var isObject = function (res) {
+    const extend = Object.assign;
+    const isObject = (res) => {
         return res !== null && typeof res === 'object';
     };
-    var hasChanged = function (value, oldValue) {
+    const hasChanged = (value, oldValue) => {
         return !Object.is(value, oldValue);
     };
-    var hasKey = function (val, key) { return Object.prototype.hasOwnProperty.call(val, key); };
+    const hasKey = (val, key) => Object.prototype.hasOwnProperty.call(val, key);
+    const camelizeRE = /-(\w)/g;
+    const camelize = (str) => {
+        return str.replace(camelizeRE, (_, c) => c ? c.toUpperCase() : '');
+    };
+    const capitalize = (str) => {
+        return str[0].toUpperCase() + str.slice(1);
+    };
+    const toHandlerKey = (str) => {
+        return str ? `on${capitalize(str)}` : ``;
+    };
 
-    var activeEffect;
-    var targetMap = new WeakMap();
+    let activeEffect;
+    const targetMap = new WeakMap();
     function track(target, key) {
-        var depsMap = targetMap.get(target);
+        let depsMap = targetMap.get(target);
         if (!depsMap) {
             targetMap.set(target, depsMap = new Map());
         }
-        var dep = depsMap.get(key);
+        let dep = depsMap.get(key);
         if (!dep) {
             depsMap.set(key, dep = new Set());
         }
@@ -33,17 +43,17 @@
         }
     }
     function trigger(target, key) {
-        var depMap = targetMap.get(target);
+        const depMap = targetMap.get(target);
         if (!depMap) {
             return;
         }
-        var dep = depMap.get(key);
+        const dep = depMap.get(key);
         if (dep) {
             triggerEffects(dep);
         }
     }
     function triggerEffects(dep) {
-        dep.forEach(function (effect) {
+        dep.forEach(effect => {
             if (effect._options && effect._options.scheduler) {
                 effect._options.scheduler(effect);
             }
@@ -52,36 +62,34 @@
             }
         });
     }
-    var ReactiveEffect = /** @class */ (function () {
-        function ReactiveEffect(fn, options) {
+    class ReactiveEffect {
+        constructor(fn, options) {
             this.fn = fn;
             this.deps = [];
             this._options = options;
         }
-        ReactiveEffect.prototype.run = function () {
+        run() {
             activeEffect = this;
-            var res = this.fn();
+            const res = this.fn();
             activeEffect = null;
             return res;
-        };
-        ReactiveEffect.prototype.stop = function () {
-            var _this = this;
+        }
+        stop() {
             if (this.onStop) {
                 this.onStop();
             }
-            this.deps.forEach(function (dep) {
-                dep["delete"](_this);
+            this.deps.forEach(dep => {
+                dep.delete(this);
             });
-        };
-        return ReactiveEffect;
-    }());
+        }
+    }
     function effect(fn, options) {
-        var _effect = new ReactiveEffect(fn, options);
+        const _effect = new ReactiveEffect(fn, options);
         extend(_effect, options);
         if (!options || !options.lazy) {
             _effect.run();
         }
-        var runner = _effect.run.bind(_effect);
+        const runner = _effect.run.bind(_effect);
         runner.effect = _effect;
         return runner;
     }
@@ -89,17 +97,15 @@
         runner.effect.stop();
     }
 
-    function createGetters(isReadonly, isShallow) {
-        if (isReadonly === void 0) { isReadonly = false; }
-        if (isShallow === void 0) { isShallow = false; }
+    function createGetters(isReadonly = false, isShallow = false) {
         return function get(target, key, receiver) {
-            if (key === "__v_isReactive" /* ReactiveFlags.IS_REACTIVE */) {
+            if (key === "__v_isReactive") {
                 return !isReadonly;
             }
-            else if (key === "__v_isReadonly" /* ReactiveFlags.IS_READONLY */) {
+            else if (key === "__v_isReadonly") {
                 return isReadonly;
             }
-            var res = Reflect.get(target, key, receiver);
+            const res = Reflect.get(target, key, receiver);
             if (!isReadonly) {
                 track(target, key);
             }
@@ -119,35 +125,39 @@
             return true;
         };
     }
-    var get = createGetters(false);
-    var set = createSetters();
-    var readonlyGet = createGetters(true);
-    createGetters(false, true);
-    var shallowReadonlyGet = createGetters(true, true);
-    var mutableHandlers = {
-        get: get,
-        set: set
+    const get = createGetters(false);
+    const set = createSetters();
+    const readonlyGet = createGetters(true);
+    const shallowReadonlyGet = createGetters(true, true);
+    const mutableHandlers = {
+        get,
+        set
     };
-    var readonlyHandlers = {
+    const readonlyHandlers = {
         get: readonlyGet,
-        set: function (target, key) {
-            console.warn("Set operation on key \"".concat(String(key), "\" failed: target is readonly."), target);
+        set(target, key) {
+            console.warn(`Set operation on key "${String(key)}" failed: target is readonly.`, target);
             return true;
         }
     };
-    var shallowReadonlyHandlers = {
+    const shallowReadonlyHandlers = {
         get: shallowReadonlyGet,
-        set: function (target, key) {
-            console.warn("Set operation on key \"".concat(String(key), "\" failed: target is readonly."), target);
+        set(target, key) {
+            console.warn(`Set operation on key "${String(key)}" failed: target is readonly.`, target);
             return true;
         }
     };
 
+    var ReactiveFlags;
+    (function (ReactiveFlags) {
+        ReactiveFlags["IS_REACTIVE"] = "__v_isReactive";
+        ReactiveFlags["IS_READONLY"] = "__v_isReadonly";
+    })(ReactiveFlags || (ReactiveFlags = {}));
     function createReactiveObject(target, baseHandlers) {
         if (!isObject(target)) {
             return target;
         }
-        var observed = new Proxy(target, baseHandlers);
+        const observed = new Proxy(target, baseHandlers);
         return observed;
     }
     function reactive(target) {
@@ -157,17 +167,17 @@
         return createReactiveObject(target, readonlyHandlers);
     }
     function isReactive(target) {
-        return !!target["__v_isReactive" /* ReactiveFlags.IS_REACTIVE */];
+        return !!target["__v_isReactive"];
     }
     function isReadonly(target) {
-        return !!target["__v_isReadonly" /* ReactiveFlags.IS_READONLY */];
+        return !!target["__v_isReadonly"];
     }
     function shallowReadonly(target) {
         return createReactiveObject(target, shallowReadonlyHandlers);
     }
 
-    var RefImpl = /** @class */ (function () {
-        function RefImpl(value) {
+    class RefImpl {
+        constructor(value) {
             this.__v_isRef = true;
             if (typeof value === 'object') {
                 this._value = reactive(value);
@@ -177,23 +187,18 @@
             }
             this.dep = new Set();
         }
-        Object.defineProperty(RefImpl.prototype, "value", {
-            get: function () {
-                trackEffects(this.dep);
-                return this._value;
-            },
-            set: function (newValue) {
-                if (!hasChanged(this._value, newValue)) {
-                    return;
-                }
-                this._value = newValue;
-                triggerEffects(this.dep);
-            },
-            enumerable: false,
-            configurable: true
-        });
-        return RefImpl;
-    }());
+        get value() {
+            trackEffects(this.dep);
+            return this._value;
+        }
+        set value(newValue) {
+            if (!hasChanged(this._value, newValue)) {
+                return;
+            }
+            this._value = newValue;
+            triggerEffects(this.dep);
+        }
+    }
     function ref(value) {
         return new RefImpl(value);
     }
@@ -203,12 +208,12 @@
     function unRef(target) {
         return isRef(target) ? target.value : target;
     }
-    var shallowUnWrapHandlers = {
-        get: function (target, key) {
+    const shallowUnWrapHandlers = {
+        get(target, key) {
             return unRef(Reflect.get(target, key));
         },
-        set: function (target, key, value) {
-            var oldValue = target[key];
+        set(target, key, value) {
+            const oldValue = target[key];
             if (isRef(oldValue) && !isRef(value)) {
                 oldValue.value = value;
                 return true;
@@ -220,53 +225,47 @@
         return new Proxy(target, shallowUnWrapHandlers);
     }
 
-    var ComputedRefImpl = /** @class */ (function () {
-        function ComputedRefImpl(getter) {
-            var _this = this;
+    class ComputedRefImpl {
+        constructor(getter) {
             this._dirty = true;
-            this._effect = new ReactiveEffect(getter, { scheduler: function () {
-                    _this._dirty = true;
+            this._effect = new ReactiveEffect(getter, { scheduler: () => {
+                    this._dirty = true;
                 } });
         }
-        Object.defineProperty(ComputedRefImpl.prototype, "value", {
-            get: function () {
-                if (this._dirty) {
-                    this._dirty = false;
-                    this._value = this._effect.run();
-                }
-                return this._value;
-            },
-            enumerable: false,
-            configurable: true
-        });
-        return ComputedRefImpl;
-    }());
-    var computed = function (fn) {
+        get value() {
+            if (this._dirty) {
+                this._dirty = false;
+                this._value = this._effect.run();
+            }
+            return this._value;
+        }
+    }
+    const computed = function (fn) {
         return new ComputedRefImpl(fn);
     };
 
     function createVNode(type, props, children) {
         return {
-            type: type,
-            props: props,
-            children: children,
+            type,
+            props,
+            children,
             el: null,
             shapeFlag: getShapeFlag(type, children)
         };
     }
     function getShapeFlag(type, children) {
-        var shapeFlag = 0;
+        let shapeFlag = 0;
         if (typeof type === 'string') {
-            shapeFlag |= 1 /* shapeFlags.ELEMENT */;
+            shapeFlag |= 1;
         }
         if (isObject(type)) {
-            shapeFlag |= 4 /* shapeFlags.STATEFUL_COMPONENT */;
+            shapeFlag |= 4;
         }
         if (typeof children === 'string') {
-            shapeFlag |= 8 /* shapeFlags.TEXT_CHILDREN */;
+            shapeFlag |= 8;
         }
         if (Array.isArray(children)) {
-            shapeFlag |= 16 /* shapeFlags.ARRAY_CHILDREN */;
+            shapeFlag |= 16;
         }
         return shapeFlag;
     }
@@ -275,13 +274,12 @@
         instance.props = rawProps || {};
     }
 
-    var publicPropertiesMap = {
-        $el: function (i) { return i.vnode.el; }
+    const publicPropertiesMap = {
+        $el: (i) => i.vnode.el
     };
-    var PublicInstanceProxyHandlers = {
-        get: function (_a, key) {
-            var instance = _a._;
-            var setupState = instance.setupState, props = instance.props;
+    const PublicInstanceProxyHandlers = {
+        get({ _: instance }, key) {
+            const { setupState, props } = instance;
             if (hasKey(setupState, key)) {
                 return Reflect.get(setupState, key);
             }
@@ -294,27 +292,36 @@
         }
     };
 
+    function emit(instance, event, ...args) {
+        const { props } = instance;
+        const handlerKey = toHandlerKey(camelize(event));
+        const handler = props[handlerKey];
+        handler && handler(...args);
+    }
+
     function createComponentInstance(vnode) {
-        var instance = {
+        const instance = {
             type: vnode.type,
             props: {},
             subTree: null,
             setupState: {},
-            vnode: vnode
+            emit: () => { },
+            vnode
         };
+        instance.emit = emit.bind(null, instance);
         return instance;
     }
     function setupComponent(instance) {
         initProps(instance, instance.vnode.props);
-        // Todo 函数式组件没有state
         setupStatefulComponent(instance);
     }
     function setupStatefulComponent(instance) {
-        var component = instance.type;
+        const component = instance.type;
         instance.proxy = new Proxy({ _: instance }, PublicInstanceProxyHandlers);
-        var setup = component.setup;
+        const setup = component.setup;
         if (setup) {
-            var setupResult = setup(shallowReadonly(instance.props));
+            const emit = instance.emit;
+            const setupResult = setup(shallowReadonly(instance.props), { emit });
             handleSetupResult(instance, setupResult);
         }
     }
@@ -325,20 +332,18 @@
         finishComponentSetup(instance);
     }
     function finishComponentSetup(instance) {
-        var component = instance.type;
+        const component = instance.type;
         if (component.render) {
             instance.render = component.render;
         }
     }
 
     function patch(vnode, container) {
-        var shapeFlag = vnode.shapeFlag;
-        if (shapeFlag & 1 /* shapeFlags.ELEMENT */) {
-            // 普通的元素
+        const { shapeFlag } = vnode;
+        if (shapeFlag & 1) {
             processElement(vnode, container);
         }
-        else if (shapeFlag & 4 /* shapeFlags.STATEFUL_COMPONENT */) {
-            // 组件
+        else if (shapeFlag & 4) {
             processComponent(vnode, container);
         }
     }
@@ -346,39 +351,39 @@
         mountComponent(vnode, container);
     }
     function mountComponent(vnode, container) {
-        var instance = createComponentInstance(vnode);
+        const instance = createComponentInstance(vnode);
         setupComponent(instance);
         setupRenderEffect(instance, vnode, container);
     }
     function setupRenderEffect(instance, vnode, container) {
-        var subTree = instance.render.call(instance.proxy);
+        const subTree = instance.render.call(instance.proxy);
         patch(subTree, container);
         vnode.el = subTree.el;
     }
     function processElement(vnode, container) {
-        var el = (vnode.el = document.createElement(vnode.type));
+        const el = (vnode.el = document.createElement(vnode.type));
         if (vnode.props) {
             patchProps(el, vnode.props);
         }
-        var shapeFlag = vnode.shapeFlag;
-        if (shapeFlag & 16 /* shapeFlags.ARRAY_CHILDREN */) {
+        const { shapeFlag } = vnode;
+        if (shapeFlag & 16) {
             mountChildren(vnode.children, el);
         }
-        else if (shapeFlag & 8 /* shapeFlags.TEXT_CHILDREN */) {
+        else if (shapeFlag & 8) {
             el.textContent = vnode.children;
         }
         container.appendChild(el);
     }
     function mountChildren(children, container) {
-        children.forEach(function (child) {
+        children.forEach(child => {
             patch(child, container);
         });
     }
     function patchProps(el, props) {
-        for (var key in props) {
-            var isOn = /^on[A-Z]/.test(key);
+        for (let key in props) {
+            const isOn = /^on[A-Z]/.test(key);
             if (isOn) {
-                var func = props[key];
+                const func = props[key];
                 el.addEventListener(key.slice(2).toLocaleLowerCase(), func);
             }
             else {
@@ -388,10 +393,9 @@
     }
 
     function createApp(rootComponent) {
-        // ...
         return {
-            mount: function (rootContainer) {
-                var vnode = createVNode(rootComponent);
+            mount(rootContainer) {
+                const vnode = createVNode(rootComponent);
                 patch(vnode, rootContainer);
             }
         };
@@ -414,3 +418,4 @@
     exports.unRef = unRef;
 
 }));
+//# sourceMappingURL=mini-vue.umd.js.map

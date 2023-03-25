@@ -6,12 +6,14 @@ export default {
     {
       format: 'umd',
       file: 'dist/mini-vue.umd.js',
-      name: 'MiniVue'
+      name: 'MiniVue',
+      sourcemap: true
     },
     {
       format: 'es',
       name: 'MiniVue',
-      file: 'dist/mini-vue.esm.js'
+      file: 'dist/mini-vue.esm.js',
+      sourcemap:true
     }
   ],
   plugins: [typescript()]
