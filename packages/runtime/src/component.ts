@@ -3,6 +3,7 @@ import { isObject } from "../../shared"
 import { initProps } from "./componentProps"
 import { PublicInstanceProxyHandlers } from "./componentPublicinstance"
 import { emit } from './componentEmit'
+import { initSlots } from "./componentSlots"
 
 export function createComponentInstance(vnode) {
   const instance = {
@@ -19,6 +20,7 @@ export function createComponentInstance(vnode) {
 
 export function setupComponent(instance) {
   initProps(instance, instance.vnode.props)
+  initSlots(instance, instance.vnode.children)
   // Todo 函数式组件没有state
   setupStatefulComponent(instance)
 }

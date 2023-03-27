@@ -25,5 +25,8 @@ function getShapeFlag(type, children) {
   if(Array.isArray(children)) {
     shapeFlag |= shapeFlags.ARRAY_CHILDREN
   }
+  if(children && isObject(children)) {
+    shapeFlag |= shapeFlags.SLOTS_CHILDREN
+  }
   return shapeFlag
 }

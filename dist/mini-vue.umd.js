@@ -267,6 +267,9 @@
         if (Array.isArray(children)) {
             shapeFlag |= 16;
         }
+        if (children && isObject(children)) {
+            shapeFlag |= 32;
+        }
         return shapeFlag;
     }
 
@@ -275,7 +278,8 @@
     }
 
     const publicPropertiesMap = {
-        $el: (i) => i.vnode.el
+        $el: (i) => i.vnode.el,
+        $slots: (i) => i.slots
     };
     const PublicInstanceProxyHandlers = {
         get({ _: instance }, key) {
@@ -299,6 +303,24 @@
         handler && handler(...args);
     }
 
+    function initSlots(instance, children) {
+        const { vnode } = instance;
+        if (vnode.shapeFlag & 32) {
+            normalizeObjectSlots(children, (instance.slots = {}));
+        }
+    }
+    function normalizeObjectSlots(rawSlots, slots) {
+        for (const key in rawSlots) {
+            const value = rawSlots[key];
+            if (typeof value === 'function') {
+                slots[key] = (props) => normalizeSlotValue(value(props));
+            }
+        }
+    }
+    function normalizeSlotValue(value) {
+        return Array.isArray(value) ? createVNode('div', null, value) : value;
+    }
+
     function createComponentInstance(vnode) {
         const instance = {
             type: vnode.type,
@@ -313,6 +335,7 @@
     }
     function setupComponent(instance) {
         initProps(instance, instance.vnode.props);
+        initSlots(instance, instance.vnode.children);
         setupStatefulComponent(instance);
     }
     function setupStatefulComponent(instance) {
