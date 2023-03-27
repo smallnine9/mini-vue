@@ -1,6 +1,8 @@
 import { shapeFlags } from '../../shared/shapeFlags'
 import { isObject } from '../../shared'
 
+export const Fragment = Symbol('v-fgt')
+export const Text = Symbol('v-text')
 export function createVNode(type, props?, children?) {
   return {
     type,
@@ -29,4 +31,8 @@ function getShapeFlag(type, children) {
     shapeFlag |= shapeFlags.SLOTS_CHILDREN
   }
   return shapeFlag
+}
+
+export function createTextVnode(text) {
+  return createVNode(Text, null, text)
 }

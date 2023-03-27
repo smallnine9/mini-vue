@@ -244,6 +244,8 @@
         return new ComputedRefImpl(fn);
     };
 
+    const Fragment = Symbol('v-fgt');
+    const Text = Symbol('v-text');
     function createVNode(type, props, children) {
         return {
             type,
@@ -271,6 +273,9 @@
             shapeFlag |= 32;
         }
         return shapeFlag;
+    }
+    function createTextVnode(text) {
+        return createVNode(Text, null, text);
     }
 
     function initProps(instance, rawProps) {
@@ -318,7 +323,7 @@
         }
     }
     function normalizeSlotValue(value) {
-        return Array.isArray(value) ? createVNode('div', null, value) : value;
+        return Array.isArray(value) ? createVNode(Fragment, null, value) : value;
     }
 
     function createComponentInstance(vnode) {
@@ -362,13 +367,28 @@
     }
 
     function patch(vnode, container) {
-        const { shapeFlag } = vnode;
-        if (shapeFlag & 1) {
-            processElement(vnode, container);
+        const { shapeFlag, type } = vnode;
+        switch (type) {
+            case Fragment:
+                processFragment(vnode, container);
+                break;
+            case Text:
+                processText(vnode, container);
+                break;
+            default:
+                if (shapeFlag & 1) {
+                    processElement(vnode, container);
+                }
+                else if (shapeFlag & 4) {
+                    processComponent(vnode, container);
+                }
         }
-        else if (shapeFlag & 4) {
-            processComponent(vnode, container);
-        }
+    }
+    function processFragment(vnode, container) {
+        const { children } = vnode;
+        children.forEach(child => {
+            patch(child, container);
+        });
     }
     function processComponent(vnode, container) {
         mountComponent(vnode, container);
@@ -414,6 +434,9 @@
             }
         }
     }
+    function processText(vnode, container) {
+        container.appendChild(document.createTextNode(vnode.children));
+    }
 
     function createApp(rootComponent) {
         return {
@@ -427,6 +450,7 @@
     exports.ReactiveEffect = ReactiveEffect;
     exports.computed = computed;
     exports.createApp = createApp;
+    exports.createTextVnode = createTextVnode;
     exports.effect = effect;
     exports.h = createVNode;
     exports.isReactive = isReactive;

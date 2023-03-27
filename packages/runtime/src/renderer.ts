@@ -1,17 +1,33 @@
-import { isObject } from "../../shared"
 import { createComponentInstance, setupComponent } from "./component"
 import { shapeFlags } from "../../shared/shapeFlags"
-
+import { Fragment, Text } from "./vnode"
 export function patch(vnode, container) {
-  const { shapeFlag } = vnode
-  if (shapeFlag & shapeFlags.ELEMENT) {
-    // 普通的元素
-    processElement(vnode, container)
-  } else if (shapeFlag & shapeFlags.STATEFUL_COMPONENT) {
-    // 组件
-    processComponent(vnode, container)
+  const { shapeFlag, type } = vnode
+  switch (type) {
+    case Fragment:
+      processFragment(vnode, container)
+      break
+    case Text:
+      processText(vnode, container)
+      break
+    default:
+      if (shapeFlag & shapeFlags.ELEMENT) {
+        // 普通的元素
+        processElement(vnode, container)
+      } else if (shapeFlag & shapeFlags.STATEFUL_COMPONENT) {
+        // 组件
+        processComponent(vnode, container)
+      }
   }
 }
+
+export function processFragment(vnode, container) {
+  const { children } = vnode
+  children.forEach(child => {
+    patch(child, container)
+  })
+}
+
 export function processComponent(vnode, container) {
   mountComponent(vnode, container)
 }
@@ -51,7 +67,7 @@ function mountChildren(children, container) {
 function patchProps(el: any, props: any) {
   for (let key in props) {
     const isOn = /^on[A-Z]/.test(key)
-    if(isOn) {
+    if (isOn) {
       const func = props[key]
       el.addEventListener(key.slice(2).toLocaleLowerCase(), func)
     } else {
@@ -59,3 +75,7 @@ function patchProps(el: any, props: any) {
     }
   }
 }
+function processText(vnode: any, container: any) {
+  container.appendChild(document.createTextNode(vnode.children))
+}
+

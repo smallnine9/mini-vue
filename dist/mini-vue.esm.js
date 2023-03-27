@@ -238,6 +238,8 @@ const computed = function (fn) {
     return new ComputedRefImpl(fn);
 };
 
+const Fragment = Symbol('v-fgt');
+const Text = Symbol('v-text');
 function createVNode(type, props, children) {
     return {
         type,
@@ -265,6 +267,9 @@ function getShapeFlag(type, children) {
         shapeFlag |= 32;
     }
     return shapeFlag;
+}
+function createTextVnode(text) {
+    return createVNode(Text, null, text);
 }
 
 function initProps(instance, rawProps) {
@@ -312,7 +317,7 @@ function normalizeObjectSlots(rawSlots, slots) {
     }
 }
 function normalizeSlotValue(value) {
-    return Array.isArray(value) ? createVNode('div', null, value) : value;
+    return Array.isArray(value) ? createVNode(Fragment, null, value) : value;
 }
 
 function createComponentInstance(vnode) {
@@ -356,13 +361,28 @@ function finishComponentSetup(instance) {
 }
 
 function patch(vnode, container) {
-    const { shapeFlag } = vnode;
-    if (shapeFlag & 1) {
-        processElement(vnode, container);
+    const { shapeFlag, type } = vnode;
+    switch (type) {
+        case Fragment:
+            processFragment(vnode, container);
+            break;
+        case Text:
+            processText(vnode, container);
+            break;
+        default:
+            if (shapeFlag & 1) {
+                processElement(vnode, container);
+            }
+            else if (shapeFlag & 4) {
+                processComponent(vnode, container);
+            }
     }
-    else if (shapeFlag & 4) {
-        processComponent(vnode, container);
-    }
+}
+function processFragment(vnode, container) {
+    const { children } = vnode;
+    children.forEach(child => {
+        patch(child, container);
+    });
 }
 function processComponent(vnode, container) {
     mountComponent(vnode, container);
@@ -408,6 +428,9 @@ function patchProps(el, props) {
         }
     }
 }
+function processText(vnode, container) {
+    container.appendChild(document.createTextNode(vnode.children));
+}
 
 function createApp(rootComponent) {
     return {
@@ -418,5 +441,5 @@ function createApp(rootComponent) {
     };
 }
 
-export { ReactiveEffect, computed, createApp, effect, createVNode as h, isReactive, isReadonly, isRef, proxyRefs, reactive, readonly, ref, shallowReadonly, stop, unRef };
+export { ReactiveEffect, computed, createApp, createTextVnode, effect, createVNode as h, isReactive, isReadonly, isRef, proxyRefs, reactive, readonly, ref, shallowReadonly, stop, unRef };
 //# sourceMappingURL=mini-vue.esm.js.map

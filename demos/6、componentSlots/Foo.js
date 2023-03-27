@@ -7,7 +7,7 @@ const Foo = {
     render() {
       console.log(this.$slots)
       const foo = h('p', {}, 'foo')
-      return h('div', {}, [this.$slots.header({headerValue:1}), foo, this.$slots.default({defaultValue: 2})])
+      return h('div', {id:'Foo'}, [this.$slots.header({headerValue:1}), foo, this.$slots.default({defaultValue: 2})])
     }
 }
 export default Foo

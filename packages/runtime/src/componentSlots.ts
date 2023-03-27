@@ -1,4 +1,4 @@
-import { createVNode } from './vnode'
+import { createVNode, Fragment } from './vnode'
 import { shapeFlags } from '../../shared/shapeFlags'
 export function initSlots(
   instance,
@@ -23,5 +23,5 @@ function normalizeObjectSlots(
 }
 
 function normalizeSlotValue(value) {
-  return Array.isArray(value) ? createVNode('div', null, value) : value
+  return Array.isArray(value) ? createVNode(Fragment, null, value) : value
 }
