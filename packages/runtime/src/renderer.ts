@@ -1,11 +1,11 @@
 import { createComponentInstance, setupComponent } from "./component"
 import { shapeFlags } from "../../shared/shapeFlags"
 import { Fragment, Text } from "./vnode"
-export function patch(vnode, container) {
+export function patch(vnode, container, parentComponent) {
   const { shapeFlag, type } = vnode
   switch (type) {
     case Fragment:
-      processFragment(vnode, container)
+      processFragment(vnode, container, parentComponent)
       break
     case Text:
       processText(vnode, container)
@@ -13,54 +13,54 @@ export function patch(vnode, container) {
     default:
       if (shapeFlag & shapeFlags.ELEMENT) {
         // 普通的元素
-        processElement(vnode, container)
+        processElement(vnode, container, parentComponent)
       } else if (shapeFlag & shapeFlags.STATEFUL_COMPONENT) {
         // 组件
-        processComponent(vnode, container)
+        processComponent(vnode, container, parentComponent)
       }
   }
 }
 
-export function processFragment(vnode, container) {
+export function processFragment(vnode, container, parentComponent) {
   const { children } = vnode
   children.forEach(child => {
-    patch(child, container)
+    patch(child, container, parentComponent)
   })
 }
 
-export function processComponent(vnode, container) {
-  mountComponent(vnode, container)
+export function processComponent(vnode, container, parent) {
+  mountComponent(vnode, container, parent)
 }
 
-function mountComponent(vnode, container) {
-  const instance = createComponentInstance(vnode)
+function mountComponent(vnode, container, parentComponent) {
+  const instance = createComponentInstance(vnode, parentComponent)
   setupComponent(instance)
   setupRenderEffect(instance, vnode, container)
 }
 
 function setupRenderEffect(instance, vnode, container) {
   const subTree = instance.render.call(instance.proxy)
-  patch(subTree, container)
+  patch(subTree, container, instance)
   vnode.el = subTree.el
 }
 
-function processElement(vnode, container) {
+function processElement(vnode, container, parentComponent) {
   const el = (vnode.el = document.createElement(vnode.type))
   if (vnode.props) {
     patchProps(el, vnode.props)
   }
   const { shapeFlag } = vnode
   if (shapeFlag & shapeFlags.ARRAY_CHILDREN) {
-    mountChildren(vnode.children, el)
+    mountChildren(vnode.children, el, parentComponent)
   } else if (shapeFlag & shapeFlags.TEXT_CHILDREN) {
     el.textContent = vnode.children
   }
   container.appendChild(el)
 }
 
-function mountChildren(children, container) {
+function mountChildren(children, container, parentComponent) {
   children.forEach(child => {
-    patch(child, container)
+    patch(child, container, parentComponent)
   })
 }
 
