@@ -402,7 +402,7 @@ function createAppAPI(render) {
 }
 
 function createRenderer(options) {
-    const { createElement, patchProp, insert } = options;
+    const { createElement: hostCreateElement, patchProp: hostPatchProp, insert: hostInsert, setElementText: hostSetElementText } = options;
     function render(vnode, container) {
         if (vnode) {
             patch(null, vnode, container, null);
@@ -456,29 +456,81 @@ function createRenderer(options) {
             }
             else {
                 console.log('effect update!');
-                instance.subTree;
-                (instance.subTree = instance.render.call(instance.proxy));
+                const prevSubTree = instance.subTree;
+                const subTree = (instance.subTree = instance.render.call(instance.proxy));
+                patch(prevSubTree, subTree, container, instance);
             }
         });
     }
     function processElement(n1, n2, container, parentComponent) {
+        console.log('processelement');
         if (!n1) {
             mountElement(n2, container, parentComponent);
         }
+        else {
+            updateElement(n1, n2);
+        }
     }
     function mountElement(vnode, container, parentComponent) {
-        const el = (vnode.el = createElement(vnode.type));
+        const el = (vnode.el = hostCreateElement(vnode.type));
         if (vnode.props) {
-            patchProp(el, vnode.props);
+            for (const key in vnode.props) {
+                const value = vnode.props[key];
+                hostPatchProp(el, key, null, value);
+            }
         }
         const { shapeFlag } = vnode;
         if (shapeFlag & 16) {
             mountChildren(vnode.children, el, parentComponent);
         }
         else if (shapeFlag & 8) {
-            el.textContent = vnode.children;
+            hostSetElementText(el, vnode.children);
         }
-        insert(el, container);
+        hostInsert(el, container);
+    }
+    function updateElement(n1, n2, container) {
+        const oldProps = n1.props;
+        const newProps = n2.props;
+        const el = (n2.el = n1.el);
+        patchProps(el, oldProps, newProps);
+        patchChildren(n1, n2, el);
+    }
+    function patchChildren(n1, n2, container) {
+        const { shapeFlag: prevShapeFlag, children: c1 } = n1;
+        const { shapeFlag: ShapeFlag, children: c2 } = n2;
+        if (ShapeFlag & 8) {
+            unMountChildren(c1, container);
+            if (c1 !== c2) {
+                hostSetElementText(container, c2);
+            }
+        }
+        else if (ShapeFlag & 16) {
+            if (prevShapeFlag & 8) {
+                hostCreateElement(container, '');
+                mountChildren(c2, container, null);
+            }
+        }
+    }
+    function unMountChildren(children, container) {
+        for (const child of children) {
+            container.removeChild(child.el);
+        }
+    }
+    function patchProps(el, oldProps, newProps) {
+        if (oldProps !== newProps) {
+            for (const key in newProps) {
+                const prevProp = oldProps[key];
+                const nextProp = newProps[key];
+                if (prevProp !== nextProp) {
+                    hostPatchProp(el, key, prevProp, nextProp);
+                }
+            }
+            for (const key in oldProps) {
+                if (!(key in newProps)) {
+                    hostPatchProp(el, key, oldProps[key], null);
+                }
+            }
+        }
     }
     function mountChildren(children, container, parentComponent) {
         children.forEach(child => {
@@ -493,15 +545,18 @@ function createRenderer(options) {
     };
 }
 
-function patchProp(el, props) {
-    for (let key in props) {
-        const isOn = /^on[A-Z]/.test(key);
-        if (isOn) {
-            const func = props[key];
-            el.addEventListener(key.slice(2).toLocaleLowerCase(), func);
+function patchProp(el, key, prevVal, nextVal) {
+    const isOn = /^on[A-Z]/.test(key);
+    if (isOn) {
+        const func = nextVal;
+        el.addEventListener(key.slice(2).toLocaleLowerCase(), func);
+    }
+    else {
+        if (nextVal === undefined || nextVal === null) {
+            el.removeAttribute(key);
         }
         else {
-            el.setAttribute(key, props[key]);
+            el.setAttribute(key, nextVal);
         }
     }
 }
@@ -511,10 +566,14 @@ function createElement(type) {
 function insert(el, container) {
     container.appendChild(el);
 }
+function setElementText(el, text) {
+    el.textContent = text;
+}
 const options = {
     createElement,
     patchProp,
-    insert
+    insert,
+    setElementText
 };
 function createApp(...args) {
     return createRenderer(options).createApp(...args);

@@ -1,12 +1,14 @@
 import { createRenderer } from '../../runtime-core/src/index'
-function patchProp(el: any, props: any) {
-  for (let key in props) {
-    const isOn = /^on[A-Z]/.test(key)
-    if (isOn) {
-      const func = props[key]
-      el.addEventListener(key.slice(2).toLocaleLowerCase(), func)
+function patchProp(el: any, key, prevVal, nextVal) {
+  const isOn = /^on[A-Z]/.test(key)
+  if (isOn) {
+    const func = nextVal
+    el.addEventListener(key.slice(2).toLocaleLowerCase(), func)
+  } else {
+    if(nextVal === undefined || nextVal === null) {
+      el.removeAttribute(key)
     } else {
-      el.setAttribute(key, props[key])
+      el.setAttribute(key, nextVal)
     }
   }
 }
@@ -19,10 +21,15 @@ function insert(el, container) {
   container.appendChild(el)
 }
 
+function setElementText(el, text) {
+  el.textContent = text
+}
+
 const options = {
   createElement,
   patchProp,
-  insert
+  insert,
+  setElementText
 }
 
 // 暴露给用户的接口
