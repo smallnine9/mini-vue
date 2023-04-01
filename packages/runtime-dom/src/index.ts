@@ -17,19 +17,31 @@ function createElement(type: any) {
   return document.createElement(type)
 }
 
-function insert(el, container) {
-  container.appendChild(el)
+function insert(
+  el,
+  container,
+  anchor
+) {
+  container.insertBefore(el, anchor)
 }
 
 function setElementText(el, text) {
   el.textContent = text
 }
 
+function remove(el) {
+  const parent = el.parentNode;
+  if (parent) {
+    parent.removeChild(el);
+  }
+}
+
 const options = {
   createElement,
   patchProp,
   insert,
-  setElementText
+  setElementText,
+  remove
 }
 
 // 暴露给用户的接口
