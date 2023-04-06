@@ -3,6 +3,7 @@ import { shapeFlags } from "../../shared/shapeFlags"
 import { Fragment, Text } from "./vnode"
 import { createAppAPI } from "./createApp"
 import { effect } from "@mini-vue/reactivity"
+import { queueJobs } from "./scheduler"
 
 export function createRenderer(options) {
   const {
@@ -120,6 +121,10 @@ export function createRenderer(options) {
         const prevSubTree = instance.subTree
         const subTree = (instance.subTree = instance.render.call(instance.proxy))
         patch(prevSubTree, subTree, container, null, instance)
+      }
+    }, {
+      scheduler: () => {
+        queueJobs(instance.update)
       }
     })
   }

@@ -405,6 +405,33 @@ function createAppAPI(render) {
     };
 }
 
+const queue = [];
+let isFlushing = false;
+function nextTick(fn) {
+    const p = Promise.resolve();
+    return fn ? p.then(fn) : p;
+}
+function queueJobs(fn) {
+    if (!queue.includes(fn)) {
+        queue.push(fn);
+        queueFlash();
+    }
+}
+function queueFlash() {
+    if (isFlushing)
+        return;
+    isFlushing = true;
+    nextTick(flushJobs);
+}
+function flushJobs() {
+    let job;
+    while ((job = queue.shift())) {
+        job();
+    }
+    queue.length = 0;
+    isFlushing = false;
+}
+
 function createRenderer(options) {
     const { createElement: hostCreateElement, patchProp: hostPatchProp, insert: hostInsert, setElementText: hostSetElementText, remove: hostRemove } = options;
     function render(vnode, container) {
@@ -482,6 +509,10 @@ function createRenderer(options) {
                 const prevSubTree = instance.subTree;
                 const subTree = (instance.subTree = instance.render.call(instance.proxy));
                 patch(prevSubTree, subTree, container, null, instance);
+            }
+        }, {
+            scheduler: () => {
+                queueJobs(instance.update);
             }
         });
     }
@@ -664,5 +695,5 @@ function createApp(...args) {
     return createRenderer(options).createApp(...args);
 }
 
-export { ReactiveEffect, computed, createApp, createRenderer, createTextVnode, effect, createVNode as h, inject, isReactive, isReadonly, isRef, provide, proxyRefs, reactive, readonly, ref, shallowReadonly, stop, unRef };
+export { ReactiveEffect, computed, createApp, createRenderer, createTextVnode, effect, createVNode as h, inject, isReactive, isReadonly, isRef, nextTick, provide, proxyRefs, reactive, readonly, ref, shallowReadonly, stop, unRef };
 //# sourceMappingURL=mini-vue.esm.js.map

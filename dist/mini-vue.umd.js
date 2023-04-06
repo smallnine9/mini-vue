@@ -411,6 +411,33 @@
         };
     }
 
+    const queue = [];
+    let isFlushing = false;
+    function nextTick(fn) {
+        const p = Promise.resolve();
+        return fn ? p.then(fn) : p;
+    }
+    function queueJobs(fn) {
+        if (!queue.includes(fn)) {
+            queue.push(fn);
+            queueFlash();
+        }
+    }
+    function queueFlash() {
+        if (isFlushing)
+            return;
+        isFlushing = true;
+        nextTick(flushJobs);
+    }
+    function flushJobs() {
+        let job;
+        while ((job = queue.shift())) {
+            job();
+        }
+        queue.length = 0;
+        isFlushing = false;
+    }
+
     function createRenderer(options) {
         const { createElement: hostCreateElement, patchProp: hostPatchProp, insert: hostInsert, setElementText: hostSetElementText, remove: hostRemove } = options;
         function render(vnode, container) {
@@ -488,6 +515,10 @@
                     const prevSubTree = instance.subTree;
                     const subTree = (instance.subTree = instance.render.call(instance.proxy));
                     patch(prevSubTree, subTree, container, null, instance);
+                }
+            }, {
+                scheduler: () => {
+                    queueJobs(instance.update);
                 }
             });
         }
@@ -681,6 +712,7 @@
     exports.isReactive = isReactive;
     exports.isReadonly = isReadonly;
     exports.isRef = isRef;
+    exports.nextTick = nextTick;
     exports.provide = provide;
     exports.proxyRefs = proxyRefs;
     exports.reactive = reactive;
