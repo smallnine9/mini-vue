@@ -258,7 +258,7 @@ function getShapeFlag(type, children) {
     if (isObject(type)) {
         shapeFlag |= 4;
     }
-    if (typeof children === 'string') {
+    if (typeof children === 'string' || typeof children === 'number') {
         shapeFlag |= 8;
     }
     if (Array.isArray(children)) {
@@ -279,7 +279,8 @@ function initProps(instance, rawProps) {
 
 const publicPropertiesMap = {
     $el: (i) => i.vnode.el,
-    $slots: (i) => i.slots
+    $slots: (i) => i.slots,
+    $props: (i) => i.props
 };
 const PublicInstanceProxyHandlers = {
     get({ _: instance }, key) {
@@ -332,6 +333,8 @@ function createComponentInstance(vnode, parent) {
         emit: () => { },
         parent,
         vnode,
+        component: null,
+        next: null,
         isMounted: false
     };
     instance.emit = emit.bind(null, instance);
@@ -440,14 +443,29 @@ function createRenderer(options) {
         if (!n1) {
             mountComponent(n2, container, parent);
         }
+        else {
+            updateComponent(n1, n2);
+        }
+    }
+    function updateComponent(n1, n2, container, parent) {
+        const instance = (n2.component = n1.component);
+        if (shouldUpdateComponent(n1, n2)) {
+            instance.next = n2;
+            instance.update();
+        }
+    }
+    function shouldUpdateComponent(n1, n2) {
+        const { props: prevProps } = n1;
+        const { props: nextProps } = n2;
+        return prevProps !== nextProps;
     }
     function mountComponent(vnode, container, parentComponent) {
-        const instance = createComponentInstance(vnode, parentComponent);
+        const instance = (vnode.component = createComponentInstance(vnode, parentComponent));
         setupComponent(instance);
         setupRenderEffect(instance, vnode, container);
     }
     function setupRenderEffect(instance, vnode, container) {
-        effect(() => {
+        instance.update = effect(() => {
             if (!instance.isMounted) {
                 console.log('effect mounted!');
                 const subTree = (instance.subTree = instance.render.call(instance.proxy));
@@ -456,12 +474,22 @@ function createRenderer(options) {
                 instance.isMounted = true;
             }
             else {
+                const nextVnode = instance.next;
+                if (nextVnode) {
+                    updateComponentPreRender(instance, nextVnode);
+                }
                 console.log('effect update!');
                 const prevSubTree = instance.subTree;
                 const subTree = (instance.subTree = instance.render.call(instance.proxy));
                 patch(prevSubTree, subTree, container, null, instance);
             }
         });
+    }
+    function updateComponentPreRender(instance, nextVnode) {
+        nextVnode.component = instance;
+        instance.vnode = nextVnode;
+        instance.next = null;
+        instance.props = nextVnode.props;
     }
     function processElement(n1, n2, container, anchor, parentComponent) {
         console.log('processelement');

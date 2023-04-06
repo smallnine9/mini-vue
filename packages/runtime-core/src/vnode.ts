@@ -22,7 +22,7 @@ function getShapeFlag(type, children) {
   if(isObject(type)) {
     shapeFlag |= shapeFlags.STATEFUL_COMPONENT
   }
-  if(typeof children === 'string') {
+  if(typeof children === 'string' || typeof children === 'number') {
     shapeFlag |= shapeFlags.TEXT_CHILDREN
   }
   if(Array.isArray(children)) {

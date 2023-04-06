@@ -66,8 +66,27 @@ export function createRenderer(options) {
     if (!n1) {
       mountComponent(n2, container, parent)
     } else {
-      //patchComponent
+      updateComponent(n1, n2, container, parent)
     }
+  }
+
+  function updateComponent(
+    n1,
+    n2,
+    container,
+    parent
+  ) {
+    const instance = (n2.component = n1.component)
+    if (shouldUpdateComponent(n1, n2)) {
+      instance.next = n2
+      instance.update()
+    }
+  }
+
+  function shouldUpdateComponent(n1, n2) {
+    const { props: prevProps } = n1
+    const { props: nextProps } = n2
+    return prevProps !== nextProps
   }
 
   function mountComponent(
@@ -75,7 +94,7 @@ export function createRenderer(options) {
     container,
     parentComponent
   ) {
-    const instance = createComponentInstance(vnode, parentComponent)
+    const instance = (vnode.component = createComponentInstance(vnode, parentComponent))
     setupComponent(instance)
     setupRenderEffect(instance, vnode, container)
   }
@@ -85,7 +104,7 @@ export function createRenderer(options) {
     vnode,
     container
   ) {
-    effect(() => {
+    instance.update = effect(() => {
       if (!instance.isMounted) {
         console.log('effect mounted!')
         const subTree = (instance.subTree = instance.render.call(instance.proxy))
@@ -93,6 +112,10 @@ export function createRenderer(options) {
         vnode.el = subTree.el
         instance.isMounted = true
       } else {
+        const nextVnode = instance.next
+        if (nextVnode) {
+          updateComponentPreRender(instance, nextVnode)
+        }
         console.log('effect update!')
         const prevSubTree = instance.subTree
         const subTree = (instance.subTree = instance.render.call(instance.proxy))
@@ -100,7 +123,15 @@ export function createRenderer(options) {
       }
     })
   }
-
+  function updateComponentPreRender(
+    instance,
+    nextVnode
+  ) {
+    nextVnode.component = instance
+    instance.vnode = nextVnode
+    instance.next = null
+    instance.props = nextVnode.props
+  }
   function processElement(
     n1,
     n2,
@@ -162,7 +193,7 @@ export function createRenderer(options) {
     const { shapeFlag: prevShapeFlag, children: c1 } = n1
     const { shapeFlag: ShapeFlag, children: c2 } = n2
     if (ShapeFlag & shapeFlags.TEXT_CHILDREN) {
-      if(prevShapeFlag & shapeFlags.ARRAY_CHILDREN) {
+      if (prevShapeFlag & shapeFlags.ARRAY_CHILDREN) {
         unMountChildren(c1, container)
       }
       if (c1 !== c2) {
@@ -196,7 +227,7 @@ export function createRenderer(options) {
       }
     }
     console.log('i:', i)
-    while(i <= e1 && i <= e2) {
+    while (i <= e1 && i <= e2) {
       if (isSameVnodeType(c1[e1], c2[e2])) {
         patch(c1[e1], c2[e2], container, null, null)
         e1--
@@ -210,18 +241,18 @@ export function createRenderer(options) {
     let anchor = anchorIndex < c2.length ? c2[anchorIndex].el : null
     // i > e1 说明新的children更长,有新增的节点
     if (i > e1) {
-      while(i <= e2) {
+      while (i <= e2) {
         patch(null, c2[i], container, anchor, null)
         i++
       }
     } else if (i > e2) {
-      while(i <= e1) {
+      while (i <= e1) {
         hostRemove(c1[i].el)
         i++
       }
       // i > e2 说明旧的children更长,有删除的节点
     } else {
-      
+
     }
   }
 
