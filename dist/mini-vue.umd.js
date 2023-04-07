@@ -554,14 +554,14 @@
             }
             hostInsert(el, container, anchor);
         }
-        function updateElement(n1, n2, container) {
+        function updateElement(n1, n2, container, anchor) {
             const oldProps = n1.props;
             const newProps = n2.props;
             const el = (n2.el = n1.el);
             patchProps(el, oldProps, newProps);
             patchChildren(n1, n2, el);
         }
-        function patchChildren(n1, n2, container) {
+        function patchChildren(n1, n2, container, anchor) {
             const { shapeFlag: prevShapeFlag, children: c1 } = n1;
             const { shapeFlag: ShapeFlag, children: c2 } = n2;
             if (ShapeFlag & 8) {
@@ -588,7 +588,7 @@
             let e2 = c2.length - 1;
             while (i <= e1 && i <= e2) {
                 if (isSameVnodeType(c1[i], c2[i])) {
-                    patch(c1[i], c2[i], container, null, null);
+                    patch(c1[i], c2[i], container, null);
                     i++;
                 }
                 else {
@@ -598,7 +598,7 @@
             console.log('i:', i);
             while (i <= e1 && i <= e2) {
                 if (isSameVnodeType(c1[e1], c2[e2])) {
-                    patch(c1[e1], c2[e2], container, null, null);
+                    patch(c1[e1], c2[e2], container, null);
                     e1--;
                     e2--;
                 }
@@ -621,7 +621,104 @@
                     i++;
                 }
             }
-            else ;
+            else {
+                let s1 = i, s2 = i;
+                let moved = false;
+                let pos = 0;
+                let toBePatched = e2 - s2 + 1;
+                const newKeyIndexMap = new Map();
+                for (let i = s2; i <= e2; i++) {
+                    newKeyIndexMap.set(c2[i].key, i);
+                }
+                const newIndexToOldIndexMap = new Array(e2 - s2 + 1).fill(0);
+                for (let i = s1; i <= e1; i++) {
+                    const prevChild = c1[i];
+                    let newIndex;
+                    if (prevChild.key != null) {
+                        newIndex = newKeyIndexMap.get(prevChild.key);
+                    }
+                    else {
+                        for (let j = s2; j <= e2; j++) {
+                            if (isSameVnodeType(prevChild, c2[j])) {
+                                newIndex = j;
+                                break;
+                            }
+                        }
+                    }
+                    if (newIndex === undefined) {
+                        hostRemove(prevChild.el);
+                    }
+                    else {
+                        newIndexToOldIndexMap[newIndex - s2] = i + 1;
+                        if (newIndex < pos) {
+                            moved = true;
+                        }
+                        else {
+                            pos = newIndex;
+                        }
+                        patch(prevChild, c2[newIndex], container, null, null);
+                    }
+                }
+                const increasingNewIndexSequence = moved ? getSequence(newIndexToOldIndexMap) : [];
+                let j = increasingNewIndexSequence.length - 1;
+                for (let i = toBePatched - 1; i >= 0; i--) {
+                    const nextIndex = s2 + i;
+                    let nextChild = c2[nextIndex];
+                    const anchor = nextIndex + 1 < c2.length ? c2[nextIndex + 1].el : null;
+                    if (newIndexToOldIndexMap[i] === 0) {
+                        patch(null, nextChild, container, anchor, null);
+                    }
+                    else if (moved) {
+                        if (i !== increasingNewIndexSequence[j]) {
+                            hostInsert(nextChild.el, container, anchor);
+                        }
+                        else {
+                            j--;
+                        }
+                    }
+                }
+            }
+        }
+        function getSequence(arr) {
+            const p = arr.slice();
+            const result = [0];
+            let i, j, u, v, c;
+            const len = arr.length;
+            for (i = 0; i < len; i++) {
+                const arrI = arr[i];
+                if (arrI !== 0) {
+                    j = result[result.length - 1];
+                    if (arr[j] < arrI) {
+                        p[i] = j;
+                        result.push(i);
+                        continue;
+                    }
+                    u = 0;
+                    v = result.length - 1;
+                    while (u < v) {
+                        c = (u + v) >> 1;
+                        if (arr[result[c]] < arrI) {
+                            u = c + 1;
+                        }
+                        else {
+                            v = c;
+                        }
+                    }
+                    if (arrI < arr[result[u]]) {
+                        if (u > 0) {
+                            p[i] = result[u - 1];
+                        }
+                        result[u] = i;
+                    }
+                }
+            }
+            u = result.length;
+            v = result[u - 1];
+            while (u-- > 0) {
+                result[u] = v;
+                v = p[v];
+            }
+            return result;
         }
         function isSameVnodeType(n1, n2) {
             return n1.type === n2.type && n1.key === n2.key;
