@@ -29,7 +29,7 @@ function parseChildren(context, ancestors) {
                 node = parseElement(context, ancestors)
             }
         } else if (context.source.startsWith('{{')) {
-            // toDo
+            node = parseInterpolation(context)
         }
         if (!node) {
             node = parseText(context)
@@ -41,7 +41,6 @@ function parseChildren(context, ancestors) {
 }
 
 function isEnd(context, ancestors) {
-    console.log(ancestors)
     const s = context.source
     if (s.startsWith('</')) {
         for (let i = ancestors.length - 1; i >= 0; i--) {
@@ -54,9 +53,36 @@ function isEnd(context, ancestors) {
     return !s
 }
 
+function parseInterpolation(context) {
+    const openDelimiter = '{{'
+    const endDelimiter = '}}'
+    const endIndex = context.source.indexOf(
+        endDelimiter,
+        endDelimiter.length
+    )
+    advanceBy(context, openDelimiter.length)
+    const rawContentLength = endIndex - openDelimiter.length
+    const rawContent = parseTextData(context, rawContentLength)
+    const content = rawContent.trim()
+    advanceBy(context, endDelimiter.length)
+    return {
+        type: NodeTypes.INTERPOLATION,
+        content: {
+            type: NodeTypes.SIMPLE_EXPRESSION,
+            content
+        }
+    }
+}
+
 function parseText(context) {
-    const endTag = ['<']
-    const endIndex = context.source.indexOf(endTag[0])
+    const endTag = ['<', '{{']
+    let endIndex = context.source.length
+    for(let i = 0; i < endTag.length; i++) {
+        let index = context.source.indexOf(endTag[i])
+        if(index !== -1 && index < endIndex) {
+            endIndex = index
+        }
+    }
     const text = parseTextData(context, endIndex)
     return {
         type: NodeTypes.TEXT,
