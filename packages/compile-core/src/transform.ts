@@ -9,16 +9,17 @@ export function transform(root, options = {}) {
 }
 
 function createRootCodegen(root) {
+  const child = root.children[0]
+  if(child.type === NodeTypes.ELEMENT) {
+    root.codegenNode = root.children[0].codegenNode
+  } else {
     root.codegenNode = root.children[0]
+  }
 }
 
 // 深度优先遍历
 function traverseNode(node, context) {
     const { nodeTransforms } = context
-    for(let i = 0; i < nodeTransforms.length; i++) {
-        const transform = nodeTransforms[i]
-        transform(node)
-    }
     switch(node.type) {
       case NodeTypes.INTERPOLATION:
         context.helper(TO_DISPLAY_STRING)
@@ -29,6 +30,10 @@ function traverseNode(node, context) {
         break
       default:
         break
+    }
+    for(let i = 0; i < nodeTransforms.length; i++) {
+      const transform = nodeTransforms[i]
+      transform(node, context)
     }
 }
 

@@ -24,3 +24,7 @@ export const capitalize = (str) => {
 export const toHandlerKey = (str) => {
   return str ? `on${capitalize(str)}` : ``
 }
+
+export const isString = (value) => {
+  return typeof value === 'string'
+}
