@@ -1,5 +1,7 @@
 export * from './h'
-export { createTextVnode } from './vnode'
+export { createTextVnode, createElementVNode } from './vnode'
 export { provide, inject } from './apiInject'
 export { createRenderer } from './renderer'
+export { registerRuntimeCompiler } from './component'
 export { nextTick } from './scheduler'
+export { toDisplayString } from '../../shared'

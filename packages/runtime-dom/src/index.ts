@@ -48,3 +48,5 @@ const options = {
 export function createApp(...args) {
   return createRenderer(options).createApp(...args)
 }
+
+export * from '../../runtime-core/src/index'

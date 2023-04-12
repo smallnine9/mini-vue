@@ -3,6 +3,8 @@ import { isObject } from '../../shared'
 
 export const Fragment = Symbol('v-fgt')
 export const Text = Symbol('v-text')
+
+export { createVNode as createElementVNode }
 export function createVNode(type, props?, children?) {
   return {
     type,

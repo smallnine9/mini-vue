@@ -28,3 +28,5 @@ export const toHandlerKey = (str) => {
 export const isString = (value) => {
   return typeof value === 'string'
 }
+
+export { toDisplayString } from './toDisplayString'

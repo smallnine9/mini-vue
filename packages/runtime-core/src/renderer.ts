@@ -108,7 +108,8 @@ export function createRenderer(options) {
     instance.update = effect(() => {
       if (!instance.isMounted) {
         console.log('effect mounted!')
-        const subTree = (instance.subTree = instance.render.call(instance.proxy))
+        const proxy = instance.proxy
+        const subTree = (instance.subTree = instance.render.call(proxy, proxy))
         patch(null, subTree, container, null, instance)
         vnode.el = subTree.el
         instance.isMounted = true
@@ -119,7 +120,8 @@ export function createRenderer(options) {
         }
         console.log('effect update!')
         const prevSubTree = instance.subTree
-        const subTree = (instance.subTree = instance.render.call(instance.proxy))
+        const proxy = instance.proxy
+        const subTree = (instance.subTree = instance.render.call(proxy, proxy))
         patch(prevSubTree, subTree, container, null, instance)
       }
     }, {
@@ -318,7 +320,6 @@ export function createRenderer(options) {
           }
         }
       }
->>>>>>> 93e5b367b32e9f38d7420202d3414af4a192659b
     }
   }
 

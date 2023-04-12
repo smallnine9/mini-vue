@@ -53,11 +53,21 @@ function handleSetupResult(instance, setupResult) {
 
 function finishComponentSetup(instance) {
   const component = instance.type
-  if (component.render) {
-    instance.render = component.render
+  if(component && !component.render) {
+    if(component.template) {
+      // Todo 编译模板
+      component.render = compiler(component.template)
+    }
   }
+  instance.render = component.render
 }
 
 export function getCurrentInstance() {
   return currentInstance
+}
+
+let compiler;
+
+export function registerRuntimeCompiler(_compiler) {
+  compiler = _compiler;
 }

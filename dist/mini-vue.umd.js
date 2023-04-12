@@ -4,6 +4,10 @@
     (global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.MiniVue = {}));
 })(this, (function (exports) { 'use strict';
 
+    function toDisplayString(value) {
+        return String(value);
+    }
+
     const extend = Object.assign;
     const isObject = (res) => {
         return res !== null && typeof res === 'object';
@@ -21,6 +25,9 @@
     };
     const toHandlerKey = (str) => {
         return str ? `on${capitalize(str)}` : ``;
+    };
+    const isString = (value) => {
+        return typeof value === 'string';
     };
 
     let activeEffect;
@@ -371,12 +378,19 @@
     }
     function finishComponentSetup(instance) {
         const component = instance.type;
-        if (component.render) {
-            instance.render = component.render;
+        if (component && !component.render) {
+            if (component.template) {
+                component.render = compiler(component.template);
+            }
         }
+        instance.render = component.render;
     }
     function getCurrentInstance() {
         return currentInstance;
+    }
+    let compiler;
+    function registerRuntimeCompiler(_compiler) {
+        compiler = _compiler;
     }
 
     function provide(key, value) {
@@ -501,7 +515,8 @@
             instance.update = effect(() => {
                 if (!instance.isMounted) {
                     console.log('effect mounted!');
-                    const subTree = (instance.subTree = instance.render.call(instance.proxy));
+                    const proxy = instance.proxy;
+                    const subTree = (instance.subTree = instance.render.call(proxy, proxy));
                     patch(null, subTree, container, null, instance);
                     vnode.el = subTree.el;
                     instance.isMounted = true;
@@ -513,7 +528,8 @@
                     }
                     console.log('effect update!');
                     const prevSubTree = instance.subTree;
-                    const subTree = (instance.subTree = instance.render.call(instance.proxy));
+                    const proxy = instance.proxy;
+                    const subTree = (instance.subTree = instance.render.call(proxy, proxy));
                     patch(prevSubTree, subTree, container, null, instance);
                 }
             }, {
@@ -798,9 +814,402 @@
         return createRenderer(options).createApp(...args);
     }
 
+    var runtimeDom = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        createApp: createApp,
+        createElementVNode: createVNode,
+        createRenderer: createRenderer,
+        createTextVnode: createTextVnode,
+        h: createVNode,
+        inject: inject,
+        nextTick: nextTick,
+        provide: provide,
+        registerRuntimeCompiler: registerRuntimeCompiler,
+        toDisplayString: toDisplayString
+    });
+
+    const TO_DISPLAY_STRING = Symbol('toDisplayString');
+    const CREATE_ELEMENT_VNODE = Symbol('createElementVNode');
+    const helperMapName = {
+        [TO_DISPLAY_STRING]: 'toDisplayString',
+        [CREATE_ELEMENT_VNODE]: 'createElementVNode'
+    };
+
+    function generate(ast) {
+        const context = createCodegenContext();
+        const { push } = context;
+        genFunctionPreamble(ast, context);
+        const functionName = 'render';
+        const args = ['_ctx', '_cache'];
+        const signature = args.join(', ');
+        push(`function ${functionName}(${signature}){`);
+        push('return ');
+        genNode(ast.codegenNode, context);
+        push('}');
+        return {
+            code: context.code
+        };
+    }
+    function genFunctionPreamble(node, context) {
+        const { push, helper } = context;
+        const VueBinging = 'Vue';
+        const aliasHelper = (s) => `${helperMapName[s]}: _${helperMapName[s]}`;
+        if (node.helpers.length > 0) {
+            push(`const { ${node.helpers.map(aliasHelper).join(',\n')} } = ${VueBinging}`);
+        }
+        push('\n');
+        push('return ');
+    }
+    function genNode(node, context) {
+        switch (node.type) {
+            case 3:
+                genText(node, context);
+                break;
+            case 1:
+                genInterpolation(node, context);
+                break;
+            case 2:
+                genExpression(node, context);
+                break;
+            case 4:
+                genElement(node, context);
+                break;
+            case 5:
+                genCompoundExpression(node, context);
+                break;
+        }
+    }
+    function genCompoundExpression(node, context) {
+        const { push } = context;
+        const children = node.children;
+        for (let i = 0; i < children.length; i++) {
+            const child = children[i];
+            if (isString(child)) {
+                push(child);
+            }
+            else {
+                genNode(child, context);
+            }
+        }
+    }
+    function genElement(node, context) {
+        const { push, helper } = context;
+        const { tag, props, children } = node;
+        push(`${helper(CREATE_ELEMENT_VNODE)}(`);
+        console.log(children);
+        genNodeList(genNullable([tag, props, children]), context);
+        push(")");
+    }
+    function genNodeList(children, context) {
+        const { push } = context;
+        for (let i = 0; i < children.length; i++) {
+            const child = children[i];
+            if (isString(child)) {
+                push(child);
+            }
+            else {
+                genNode(child, context);
+            }
+            if (i < children.length - 1) {
+                push(', ');
+            }
+        }
+    }
+    function genNullable(args) {
+        return args.map(arg => arg || 'null');
+    }
+    function genExpression(node, context) {
+        const { push } = context;
+        push(node.content);
+    }
+    function genInterpolation(node, context) {
+        const { push, helper } = context;
+        push(`${helper(TO_DISPLAY_STRING)}(`);
+        genNode(node.content, context);
+        push(')');
+    }
+    function genText(node, context) {
+        const { push } = context;
+        push(`'${node.content}'`);
+    }
+    function createCodegenContext() {
+        const context = {
+            code: '',
+            push(source) {
+                context.code += source;
+            },
+            helper(key) {
+                return `_${helperMapName[key]}`;
+            }
+        };
+        return context;
+    }
+
+    var TagType;
+    (function (TagType) {
+        TagType[TagType["START"] = 0] = "START";
+        TagType[TagType["END"] = 1] = "END";
+    })(TagType || (TagType = {}));
+    function baseParse(content) {
+        const context = createParserContext(content);
+        return createRoot(parseChildren(context, []));
+    }
+    function createParserContext(content) {
+        return {
+            source: content
+        };
+    }
+    function advanceBy(context, length) {
+        context.source = context.source.slice(length);
+    }
+    function parseChildren(context, ancestors) {
+        const nodes = [];
+        while (!isEnd(context, ancestors)) {
+            let node;
+            const s = context.source;
+            if (s.startsWith('<')) {
+                if (/[a-z]/.test(s[1])) {
+                    node = parseElement(context, ancestors);
+                }
+            }
+            else if (context.source.startsWith('{{')) {
+                node = parseInterpolation(context);
+            }
+            if (!node) {
+                node = parseText(context);
+            }
+            nodes.push(node);
+        }
+        return nodes;
+    }
+    function isEnd(context, ancestors) {
+        const s = context.source;
+        if (s.startsWith('</')) {
+            for (let i = ancestors.length - 1; i >= 0; i--) {
+                const tag = ancestors[i].tag;
+                if (tag && startWithEndTagOpen(s, tag)) {
+                    return true;
+                }
+            }
+        }
+        return !s;
+    }
+    function parseInterpolation(context) {
+        const openDelimiter = '{{';
+        const endDelimiter = '}}';
+        const endIndex = context.source.indexOf(endDelimiter, endDelimiter.length);
+        advanceBy(context, openDelimiter.length);
+        const rawContentLength = endIndex - openDelimiter.length;
+        const rawContent = parseTextData(context, rawContentLength);
+        const content = rawContent.trim();
+        advanceBy(context, endDelimiter.length);
+        return {
+            type: 1,
+            content: {
+                type: 2,
+                content
+            }
+        };
+    }
+    function parseText(context) {
+        const endTag = ['<', '{{'];
+        let endIndex = context.source.length;
+        for (let i = 0; i < endTag.length; i++) {
+            let index = context.source.indexOf(endTag[i]);
+            if (index !== -1 && index < endIndex) {
+                endIndex = index;
+            }
+        }
+        const text = parseTextData(context, endIndex);
+        return {
+            type: 3,
+            content: text
+        };
+    }
+    function parseTextData(context, length) {
+        const text = context.source.slice(0, length);
+        advanceBy(context, length);
+        return text;
+    }
+    function createRoot(children) {
+        return {
+            type: 0,
+            children
+        };
+    }
+    function parseElement(context, ancestors) {
+        const element = parseTag(context, 0);
+        ancestors.push(element);
+        element.children = parseChildren(context, ancestors);
+        ancestors.pop(element);
+        if (startWithEndTagOpen(context.source, element.tag)) {
+            parseTag(context, 1);
+        }
+        else {
+            throw new Error(`缺少结束标签:${element.tag}`);
+        }
+        return element;
+    }
+    function startWithEndTagOpen(source, tag) {
+        return source.slice(2, 2 + tag.length) === tag;
+    }
+    function parseTag(context, type) {
+        const match = /^<\/?([a-z]*)/i.exec(context.source);
+        const tag = match[1];
+        advanceBy(context, match[0].length);
+        advanceBy(context, 1);
+        if (type === 1)
+            return;
+        return {
+            type: 4,
+            tag
+        };
+    }
+
+    function transform(root, options = {}) {
+        const context = createTransformContext(root, options);
+        traverseNode(root, context);
+        createRootCodegen(root);
+        root.helpers = [...context.helpers.keys()];
+    }
+    function createRootCodegen(root) {
+        const child = root.children[0];
+        if (child.type === 4) {
+            root.codegenNode = root.children[0].codegenNode;
+        }
+        else {
+            root.codegenNode = root.children[0];
+        }
+    }
+    function traverseNode(node, context) {
+        const { nodeTransforms } = context;
+        switch (node.type) {
+            case 1:
+                context.helper(TO_DISPLAY_STRING);
+                break;
+            case 0:
+            case 4:
+                traverseChildren(node, context);
+                break;
+        }
+        for (let i = 0; i < nodeTransforms.length; i++) {
+            const transform = nodeTransforms[i];
+            transform(node, context);
+        }
+    }
+    function traverseChildren(node, context) {
+        const { children } = node;
+        for (let i = 0; i < children.length; i++) {
+            traverseNode(children[i], context);
+        }
+    }
+    function createTransformContext(root, options) {
+        const context = {
+            root,
+            nodeTransforms: options.nodeTransforms || [],
+            helpers: new Map(),
+            helper(key) {
+                context.helpers.set(key, 1);
+            }
+        };
+        return context;
+    }
+
+    var NodeTypes;
+    (function (NodeTypes) {
+        NodeTypes[NodeTypes["ROOT"] = 0] = "ROOT";
+        NodeTypes[NodeTypes["INTERPOLATION"] = 1] = "INTERPOLATION";
+        NodeTypes[NodeTypes["SIMPLE_EXPRESSION"] = 2] = "SIMPLE_EXPRESSION";
+        NodeTypes[NodeTypes["TEXT"] = 3] = "TEXT";
+        NodeTypes[NodeTypes["ELEMENT"] = 4] = "ELEMENT";
+        NodeTypes[NodeTypes["COMPOUND_EXPRESSION"] = 5] = "COMPOUND_EXPRESSION";
+    })(NodeTypes || (NodeTypes = {}));
+    function createVNodeCall(context, tag, props, children) {
+        context.helper(CREATE_ELEMENT_VNODE);
+        return {
+            type: 4,
+            tag,
+            props,
+            children
+        };
+    }
+
+    function transformElement(node, context) {
+        if (node.type === 4) {
+            const vnodeTag = `'${node.tag}'`;
+            let vnodeProps;
+            const children = node.children;
+            let vnodeChildren = children[0];
+            node.codegenNode = createVNodeCall(context, vnodeTag, vnodeProps, vnodeChildren);
+        }
+    }
+
+    function transformExpression(node) {
+        if (node.type === 1) {
+            node.content = processExpression(node.content);
+        }
+    }
+    function processExpression(node) {
+        node.content = `_ctx.${node.content}`;
+        return node;
+    }
+
+    function isText(node) {
+        return (node.type === 3 || node.type === 1);
+    }
+
+    function transformText(node) {
+        if (node.type === 4) {
+            const { children } = node;
+            let currentContainer;
+            for (let i = 0; i < children.length; i++) {
+                let child = children[i];
+                if (isText(child)) {
+                    for (let j = i + 1; j < children.length; j++) {
+                        let next = children[j];
+                        if (isText(next)) {
+                            if (!currentContainer) {
+                                currentContainer = children[i] = {
+                                    type: 5,
+                                    children: [child]
+                                };
+                            }
+                            currentContainer.children.push(" + ");
+                            currentContainer.children.push(next);
+                            children.splice(j, 1);
+                            j--;
+                        }
+                        else {
+                            currentContainer = undefined;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    function baseCompile(template) {
+        const ast = baseParse(template);
+        transform(ast, {
+            nodeTransforms: [transformExpression, transformText, transformElement],
+        });
+        return generate(ast);
+    }
+
+    function complileToFunction(template) {
+      // Todo 编译模板
+      const { code } = baseCompile(template);
+      const render = new Function('Vue', code)(runtimeDom);
+      return render
+    }
+
+    registerRuntimeCompiler(complileToFunction);
+
     exports.ReactiveEffect = ReactiveEffect;
     exports.computed = computed;
     exports.createApp = createApp;
+    exports.createElementVNode = createVNode;
     exports.createRenderer = createRenderer;
     exports.createTextVnode = createTextVnode;
     exports.effect = effect;
@@ -815,8 +1224,10 @@
     exports.reactive = reactive;
     exports.readonly = readonly;
     exports.ref = ref;
+    exports.registerRuntimeCompiler = registerRuntimeCompiler;
     exports.shallowReadonly = shallowReadonly;
     exports.stop = stop;
+    exports.toDisplayString = toDisplayString;
     exports.unRef = unRef;
 
 }));
