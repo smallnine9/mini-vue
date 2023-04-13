@@ -1,30 +1,51 @@
 lockfileVersion: 5.4
 
-specifiers:
-  '@babel/core': ^7.20.7
-  '@babel/preset-env': ^7.20.2
-  '@babel/preset-typescript': ^7.18.6
-  '@rollup/plugin-typescript': ^11.0.0
-  '@types/jest': ^29.2.4
-  babel-jest: ^29.3.1
-  jest: ^29.3.1
-  rollup: ^3.19.1
-  tslib: ^2.5.0
-  typescript: ^4.9.5
+importers:
 
-dependencies:
-  tslib: 2.5.0
-  typescript: 4.9.5
+  .:
+    specifiers:
+      '@babel/core': ^7.20.7
+      '@babel/preset-env': ^7.20.2
+      '@babel/preset-typescript': ^7.18.6
+      '@rollup/plugin-typescript': ^11.0.0
+      '@types/jest': ^29.2.4
+      babel-jest: ^29.3.1
+      jest: ^29.3.1
+      rollup: ^3.19.1
+      tslib: ^2.5.0
+      typescript: ^4.9.5
+    dependencies:
+      tslib: 2.5.0
+      typescript: 4.9.5
+    devDependencies:
+      '@babel/core': 7.21.3
+      '@babel/preset-env': 7.20.2_@babel+core@7.21.3
+      '@babel/preset-typescript': 7.21.0_@babel+core@7.21.3
+      '@rollup/plugin-typescript': 11.0.0_6xpx4ownnv75244cfyuvoru6ci
+      '@types/jest': 29.4.1
+      babel-jest: 29.5.0_@babel+core@7.21.3
+      jest: 29.5.0
+      rollup: 3.19.1
 
-devDependencies:
-  '@babel/core': 7.21.3
-  '@babel/preset-env': 7.20.2_@babel+core@7.21.3
-  '@babel/preset-typescript': 7.21.0_@babel+core@7.21.3
-  '@rollup/plugin-typescript': 11.0.0_6xpx4ownnv75244cfyuvoru6ci
-  '@types/jest': 29.4.1
-  babel-jest: 29.5.0_@babel+core@7.21.3
-  jest: 29.5.0
-  rollup: 3.19.1
+  packages/compile-core:
+    specifiers: {}
+
+  packages/reactivity:
+    specifiers: {}
+
+  packages/runtime-core:
+    specifiers: {}
+
+  packages/runtime-dom:
+    specifiers: {}
+
+  packages/vue:
+    specifiers:
+      '@mini-vue/compile-core': workspace:^1.0.0
+      '@mini-vue/runtime-dom': workspace:^1.0.0
+    dependencies:
+      '@mini-vue/compile-core': link:../compile-core
+      '@mini-vue/runtime-dom': link:../runtime-dom
 
 packages:
 

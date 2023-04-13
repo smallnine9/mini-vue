@@ -30,6 +30,41 @@
         return typeof value === 'string';
     };
 
+    const Fragment = Symbol('v-fgt');
+    const Text = Symbol('v-text');
+    function createVNode(type, props, children) {
+        return {
+            type,
+            props,
+            key: props && props.key,
+            children,
+            el: null,
+            shapeFlag: getShapeFlag(type, children)
+        };
+    }
+    function getShapeFlag(type, children) {
+        let shapeFlag = 0;
+        if (typeof type === 'string') {
+            shapeFlag |= 1;
+        }
+        if (isObject(type)) {
+            shapeFlag |= 4;
+        }
+        if (typeof children === 'string' || typeof children === 'number') {
+            shapeFlag |= 8;
+        }
+        if (Array.isArray(children)) {
+            shapeFlag |= 16;
+        }
+        if (children && isObject(children)) {
+            shapeFlag |= 32;
+        }
+        return shapeFlag;
+    }
+    function createTextVnode(text) {
+        return createVNode(Text, null, text);
+    }
+
     let activeEffect;
     const targetMap = new WeakMap();
     function track(target, key) {
@@ -250,41 +285,6 @@
     const computed = function (fn) {
         return new ComputedRefImpl(fn);
     };
-
-    const Fragment = Symbol('v-fgt');
-    const Text = Symbol('v-text');
-    function createVNode(type, props, children) {
-        return {
-            type,
-            props,
-            key: props && props.key,
-            children,
-            el: null,
-            shapeFlag: getShapeFlag(type, children)
-        };
-    }
-    function getShapeFlag(type, children) {
-        let shapeFlag = 0;
-        if (typeof type === 'string') {
-            shapeFlag |= 1;
-        }
-        if (isObject(type)) {
-            shapeFlag |= 4;
-        }
-        if (typeof children === 'string' || typeof children === 'number') {
-            shapeFlag |= 8;
-        }
-        if (Array.isArray(children)) {
-            shapeFlag |= 16;
-        }
-        if (children && isObject(children)) {
-            shapeFlag |= 32;
-        }
-        return shapeFlag;
-    }
-    function createTextVnode(text) {
-        return createVNode(Text, null, text);
-    }
 
     function initProps(instance, rawProps) {
         instance.props = rawProps || {};
@@ -816,16 +816,29 @@
 
     var runtimeDom = /*#__PURE__*/Object.freeze({
         __proto__: null,
+        ReactiveEffect: ReactiveEffect,
+        computed: computed,
         createApp: createApp,
         createElementVNode: createVNode,
         createRenderer: createRenderer,
         createTextVnode: createTextVnode,
+        effect: effect,
         h: createVNode,
         inject: inject,
+        isReactive: isReactive,
+        isReadonly: isReadonly,
+        isRef: isRef,
         nextTick: nextTick,
         provide: provide,
+        proxyRefs: proxyRefs,
+        reactive: reactive,
+        readonly: readonly,
+        ref: ref,
         registerRuntimeCompiler: registerRuntimeCompiler,
-        toDisplayString: toDisplayString
+        shallowReadonly: shallowReadonly,
+        stop: stop,
+        toDisplayString: toDisplayString,
+        unRef: unRef
     });
 
     const TO_DISPLAY_STRING = Symbol('toDisplayString');

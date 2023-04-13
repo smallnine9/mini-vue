@@ -1,7 +1,7 @@
 import typescript from '@rollup/plugin-typescript'
 
 export default {
-  input: 'packages/index.ts',
+  input: 'packages/vue/src/index.ts',
   output: [
     {
       format: 'umd',
